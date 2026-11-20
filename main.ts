@@ -23,4 +23,15 @@ const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0
 if (!bytes.subarray(0, 8).equals(PNG_SIGNATURE)) {
   throw new Error("entry.png is not a PNG file");
 }
+// Guard: the bounty caps the image at 1024x1024 and 1 MiB. Read the PNG
+// IHDR (bytes 16-23: width, height, big-endian uint32) and refuse a file
+// that breaks either cap, so a bad image can never be emitted silently.
+const width = bytes.readUInt32BE(16);
+const height = bytes.readUInt32BE(20);
+if (width > 1024 || height > 1024) {
+  throw new Error(`entry.png is ${width}x${height}, over the 1024x1024 cap`);
+}
+if (bytes.length > 1024 * 1024) {
+  throw new Error(`entry.png is ${bytes.length} bytes, over the 1 MiB cap`);
+}
 writeFileSync(join(outDir, "entry.png"), bytes);
